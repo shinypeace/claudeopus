@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Shooter 3D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', 'Arial', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            cursor: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        /* UI Elements */
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        #crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: #00ff00;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Menu System */
+        .menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #0a0a2e, #16213e);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: all;
+            z-index: 200;
+        }
+
+        .menu h1 {
+            font-size: 4em;
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px #00ffff;
+            background: linear-gradient(45deg, #00ffff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .menu-button {
+            padding: 15px 30px;
+            margin: 10px;
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
+            border: 2px solid #00ffff;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .menu-button:hover {
+            background: linear-gradient(45deg, #2a5298, #1e3c72);
+            box-shadow: 0 0 20px #00ffff;
+            transform: translateY(-2px);
+        }
+
+        #gameOverMenu {
+            background: linear-gradient(45deg, #2e0a0a, #3e1616);
+        }
+
+        #pauseMenu {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Health and Ammo bars */
+        .status-bar {
+            position: absolute;
+            bottom: 30px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #healthBar {
+            left: 30px;
+            width: 200px;
+        }
+
+        #ammoBar {
+            right: 30px;
+            width: 150px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .health-fill {
+            background: linear-gradient(90deg, #ff0000, #00ff00);
+        }
+
+        .ammo-fill {
+            background: linear-gradient(90deg, #ffff00, #ff8800);
+        }
+
+        .bar-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* Loading screen */
+        #loadingScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #333;
+            border-top: 3px solid #00ffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .menu h1 {
+                font-size: 2.5em;
+            }
+            
+            .menu-button {
+                font-size: 16px;
+                padding: 12px 25px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- Loading Screen -->
+        <div id="loadingScreen">
+            <div class="loader"></div>
+            <h2>Загрузка Cosmic Shooter 3D...</h2>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="mainMenu" class="menu hidden">
+            <h1>COSMIC SHOOTER 3D</h1>
+            <button class="menu-button" onclick="startGame()">НАЧАТЬ ИГРУ</button>
+            <button class="menu-button" onclick="showStats()">СТАТИСТИКА</button>
+            <button class="menu-button" onclick="showControls()">УПРАВЛЕНИЕ</button>
+        </div>
+
+        <!-- Game Over Menu -->
+        <div id="gameOverMenu" class="menu hidden">
+            <h1>ИГРА ОКОНЧЕНА</h1>
+            <h2 id="finalScore">Ваш счет: 0</h2>
+            <h3 id="highScore">Лучший результат: 0</h3>
+            <button class="menu-button" onclick="restartGame()">ИГРАТЬ СНОВА</button>
+            <button class="menu-button" onclick="showMainMenu()">ГЛАВНОЕ МЕНЮ</button>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pauseMenu" class="menu hidden">
+            <h1>ПАУЗА</h1>
+            <button class="menu-button" onclick="resumeGame()">ПРОДОЛЖИТЬ</button>
+            <button class="menu-button" onclick="showMainMenu()">ГЛАВНОЕ МЕНЮ</button>
+        </div>
+
+        <!-- Stats Menu -->
+        <div id="statsMenu" class="menu hidden">
+            <h1>СТАТИСТИКА</h1>
+            <div id="statsContent" style="text-align: left; font-size: 16px; line-height: 1.8;">
+                <p>Лучший счет: <span id="bestScore">0</span></p>
+                <p>Всего игр: <span id="totalGames">0</span></p>
+                <p>Всего убийств: <span id="totalKills">0</span></p>
+                <p>Время в игре: <span id="totalTime">0</span> сек</p>
+            </div>
+            <button class="menu-button" onclick="showMainMenu()">НАЗАД</button>
+        </div>
+
+        <!-- Controls Menu -->
+        <div id="controlsMenu" class="menu hidden">
+            <h1>УПРАВЛЕНИЕ</h1>
+            <div style="text-align: left; font-size: 16px; line-height: 2;">
+                <p><strong>WASD</strong> - Движение</p>
+                <p><strong>Мышь</strong> - Поворот камеры</p>
+                <p><strong>ЛКМ</strong> - Стрельба</p>
+                <p><strong>Пробел</strong> - Прыжок</p>
+                <p><strong>Shift</strong> - Бег</p>
+                <p><strong>ESC</strong> - Пауза</p>
+                <p><strong>R</strong> - Перезарядка</p>
+            </div>
+            <button class="menu-button" onclick="showMainMenu()">НАЗАД</button>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Game UI -->
+        <div id="ui" class="hidden">
+            <!-- HUD -->
+            <div id="hud">
+                <div>Счет: <span id="score">0</span></div>
+                <div>Убийств: <span id="kills">0</span></div>
+                <div>Волна: <span id="wave">1</span></div>
+                <div>Здоровье: <span id="health">100</span></div>
+            </div>
+
+            <!-- Crosshair -->
+            <div id="crosshair"></div>
+
+            <!-- Status bars -->
+            <div id="healthBar" class="status-bar">
+                <div class="bar-fill health-fill" style="width: 100%;"></div>
+                <div class="bar-text">HP</div>
+            </div>
+
+            <div id="ammoBar" class="status-bar">
+                <div class="bar-fill ammo-fill" style="width: 100%;"></div>
+                <div class="bar-text">AMMO</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // PointerLockControls implementation for compatibility
+        THREE.PointerLockControls = function(camera, domElement) {
+            var scope = this;
+            this.domElement = domElement || document.body;
+            this.isLocked = false;
+            
+            camera.rotation.set(0, 0, 0);
+            
+            var pitchObject = new THREE.Object3D();
+            pitchObject.add(camera);
+            
+            var yawObject = new THREE.Object3D();
+            yawObject.position.y = 10;
+            yawObject.add(pitchObject);
+            
+            var PI_2 = Math.PI / 2;
+            
+            var onMouseMove = function(event) {
+                if (scope.isLocked === false) return;
+                
+                var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+                var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+                
+                yawObject.rotation.y -= movementX * 0.002;
+                pitchObject.rotation.x -= movementY * 0.002;
+                
+                pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, pitchObject.rotation.x));
+            };
+            
+            var onPointerlockChange = function() {
+                if (document.pointerLockElement === scope.domElement) {
+                    scope.isLocked = true;
+                } else {
+                    scope.isLocked = false;
+                }
+            };
+            
+            this.domElement.addEventListener('mousemove', onMouseMove, false);
+            document.addEventListener('pointerlockchange', onPointerlockChange, false);
+            document.addEventListener('mozpointerlockchange', onPointerlockChange, false);
+            document.addEventListener('webkitpointerlockchange', onPointerlockChange, false);
+            
+            this.enabled = false;
+            this.getObject = function() {
+                return yawObject;
+            };
+            
+            Object.defineProperty(this, 'enabled', {
+                get: function() {
+                    return scope.isLocked;
+                },
+                set: function(value) {
+                    if (value) {
+                        scope.domElement.requestPointerLock();
+                    } else {
+                        document.exitPointerLock();
+                    }
+                }
+            });
+        };
+    </script>
+    
+    <!-- Game Scripts -->
+    <script src="js/game.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/enemies.js"></script>
+    <script src="js/weapons.js"></script>
+    <script src="js/powerups.js"></script>
+    <script src="js/environment.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/posteffects.js"></script>
+    
+    <script>
+        // Initialize game when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+            }, 2000);
+        });
+
+        // Menu functions
+        function startGame() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('ui').classList.remove('hidden');
+            if (window.game) {
+                window.game.start();
+            }
+        }
+
+        function showMainMenu() {
+            document.querySelectorAll('.menu').forEach(menu => menu.classList.add('hidden'));
+            document.getElementById('ui').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            if (window.game) {
+                window.game.pause();
+            }
+        }
+
+        function showStats() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('statsMenu').classList.remove('hidden');
+            updateStatsDisplay();
+        }
+
+        function showControls() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('controlsMenu').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('ui').classList.remove('hidden');
+            if (window.game) {
+                window.game.restart();
+            }
+        }
+
+        function resumeGame() {
+            document.getElementById('pauseMenu').classList.add('hidden');
+            if (window.game) {
+                window.game.resume();
+            }
+        }
+
+        function updateStatsDisplay() {
+            const stats = JSON.parse(localStorage.getItem('cosmicShooterStats') || '{}');
+            document.getElementById('bestScore').textContent = stats.bestScore || 0;
+            document.getElementById('totalGames').textContent = stats.totalGames || 0;
+            document.getElementById('totalKills').textContent = stats.totalKills || 0;
+            document.getElementById('totalTime').textContent = stats.totalTime || 0;
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Escape') {
+                if (window.game && window.game.isPlaying && !window.game.isPaused) {
+                    document.getElementById('pauseMenu').classList.remove('hidden');
+                    window.game.pause();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
